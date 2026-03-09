@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase";
 
 /**
  * POST /api/upload
  *
- * Stub endpoint for video uploads.
- * In production this will:
- *  1. Accept a multipart/form-data payload with the MP4 file
- *  2. Store the file in cloud storage (e.g. S3, R2)
- *  3. Return the public URL
+ * Accepts a multipart/form-data payload with a video file.
+ * Uploads to Supabase Storage `videos` bucket.
+ * Returns the public URL.
  */
 export async function POST(request: NextRequest) {
     const contentType = request.headers.get("content-type") ?? "";
@@ -19,7 +18,6 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // In the MVP we just acknowledge the upload
     const formData = await request.formData();
     const file = formData.get("video");
 
@@ -30,13 +28,43 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Stub: return a fake URL
-    const fakeUrl = `/uploads/${Date.now()}.mp4`;
+    // Check env vars — if Supabase is not configured, return a stub
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const fakeUrl = `/uploads/${Date.now()}.mp4`;
+        return NextResponse.json({
+            ok: true,
+            url: fakeUrl,
+            size: file.size,
+            message: "Upload stub — Supabase not configured, file not persisted.",
+        });
+    }
+
+    const supabase = createServerClient();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const { data, error } = await supabase.storage
+        .from("videos")
+        .upload(fileName, buffer, {
+            contentType: "video/mp4",
+            upsert: false,
+        });
+
+    if (error) {
+        return NextResponse.json(
+            { error: `Upload failed: ${error.message}` },
+            { status: 500 }
+        );
+    }
+
+    const { data: urlData } = supabase.storage
+        .from("videos")
+        .getPublicUrl(data.path);
 
     return NextResponse.json({
         ok: true,
-        url: fakeUrl,
+        url: urlData.publicUrl,
+        path: data.path,
         size: file.size,
-        message: "Upload stub — file accepted but not persisted yet.",
     });
 }

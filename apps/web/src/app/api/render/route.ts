@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { RenderJob } from "@video-editor/shared";
+import { createServerClient } from "@/lib/supabase";
 
 /**
  * POST /api/render
  *
- * Stub endpoint for render jobs.
- * In production this will:
- *  1. Accept project + template config
- *  2. Enqueue a render job (e.g. via BullMQ / SQS)
- *  3. Return the job ID for polling
+ * Creates a render job in the database.
+ * Accepts: { projectId, templateId }
  */
 export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null);
@@ -20,27 +17,48 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Stub: create a fake render job
-    const job: RenderJob = {
-        id: `render-${Date.now()}`,
-        projectId: body.projectId,
-        status: "queued",
-        progress: 0,
-        outputUrl: null,
-        createdAt: new Date().toISOString(),
-    };
+    // Stub mode if Supabase is not configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return NextResponse.json({
+            ok: true,
+            job: {
+                id: `render-${Date.now()}`,
+                project_id: body.projectId,
+                status: "queued",
+                progress: 0,
+                output_url: null,
+                created_at: new Date().toISOString(),
+            },
+            message: "Render stub — Supabase not configured.",
+        });
+    }
 
-    return NextResponse.json({
-        ok: true,
-        job,
-        message: "Render stub — job created but not processed yet.",
-    });
+    const supabase = createServerClient();
+
+    const { data: job, error } = await supabase
+        .from("render_jobs")
+        .insert({
+            project_id: body.projectId,
+            status: "queued",
+            progress: 0,
+        })
+        .select()
+        .single();
+
+    if (error) {
+        return NextResponse.json(
+            { error: `Failed to create render job: ${error.message}` },
+            { status: 500 }
+        );
+    }
+
+    return NextResponse.json({ ok: true, job });
 }
 
 /**
  * GET /api/render?jobId=xxx
  *
- * Stub endpoint to check render job status.
+ * Fetches render job status from the database.
  */
 export async function GET(request: NextRequest) {
     const jobId = request.nextUrl.searchParams.get("jobId");
@@ -52,15 +70,35 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    // Stub: always return "done" with a fake output URL
-    const job: RenderJob = {
-        id: jobId,
-        projectId: "unknown",
-        status: "done",
-        progress: 100,
-        outputUrl: `/renders/${jobId}.mp4`,
-        createdAt: new Date().toISOString(),
-    };
+    // Stub mode
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return NextResponse.json({
+            ok: true,
+            job: {
+                id: jobId,
+                project_id: "unknown",
+                status: "done",
+                progress: 100,
+                output_url: `/renders/${jobId}.mp4`,
+                created_at: new Date().toISOString(),
+            },
+        });
+    }
+
+    const supabase = createServerClient();
+
+    const { data: job, error } = await supabase
+        .from("render_jobs")
+        .select()
+        .eq("id", jobId)
+        .single();
+
+    if (error || !job) {
+        return NextResponse.json(
+            { error: "Render job not found" },
+            { status: 404 }
+        );
+    }
 
     return NextResponse.json({ ok: true, job });
 }
