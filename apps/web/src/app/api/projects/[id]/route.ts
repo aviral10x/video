@@ -4,7 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 /**
  * GET /api/projects/[id]
  *
- * Fetches a single project with its template.
+ * Fetches a single project with its template, transcript, and signed video URL.
  */
 export async function GET(
     _request: NextRequest,
@@ -25,6 +25,24 @@ export async function GET(
         );
     }
 
+    // Generate signed URL for private video bucket
+    let signedVideoUrl: string | null = null;
+    if (project.video_url) {
+        // Extract storage path from full URL
+        const videoUrl = project.video_url as string;
+        const bucketPrefix = "/storage/v1/object/public/videos/";
+        const idx = videoUrl.indexOf(bucketPrefix);
+        if (idx !== -1) {
+            const storagePath = videoUrl.substring(idx + bucketPrefix.length);
+            const { data: signedData } = await supabase.storage
+                .from("videos")
+                .createSignedUrl(storagePath, 3600); // 1 hour
+            if (signedData?.signedUrl) {
+                signedVideoUrl = signedData.signedUrl;
+            }
+        }
+    }
+
     // Fetch transcript with words if it exists
     let transcript = null;
     const { data: transcriptData } = await supabase
@@ -34,7 +52,6 @@ export async function GET(
         .single();
 
     if (transcriptData) {
-        // Sort words by sort_order
         const words = (transcriptData.transcript_words ?? []).sort(
             (a: any, b: any) => a.sort_order - b.sort_order
         );
@@ -44,7 +61,11 @@ export async function GET(
         };
     }
 
-    return NextResponse.json({ ok: true, project, transcript });
+    return NextResponse.json({
+        ok: true,
+        project: { ...project, signed_video_url: signedVideoUrl },
+        transcript,
+    });
 }
 
 /**
@@ -92,3 +113,48 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true, project });
 }
+
+/**
+ * DELETE /api/projects/[id]
+ *
+ * Deletes a project and its related data (transcripts, assets, render jobs).
+ */
+export async function DELETE(
+    _request: NextRequest,
+    { params }: { params: { id: string } }
+) {
+    const supabase = createServerClient();
+
+    // Delete related data first (cascade may handle some of these)
+    await supabase.from("project_assets").delete().eq("project_id", params.id);
+    await supabase.from("render_jobs").delete().eq("project_id", params.id);
+
+    // Delete transcript words via transcript
+    const { data: transcripts } = await supabase
+        .from("transcripts")
+        .select("id")
+        .eq("project_id", params.id);
+
+    if (transcripts?.length) {
+        for (const t of transcripts) {
+            await supabase.from("transcript_words").delete().eq("transcript_id", t.id);
+        }
+        await supabase.from("transcripts").delete().eq("project_id", params.id);
+    }
+
+    // Delete the project itself
+    const { error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", params.id);
+
+    if (error) {
+        return NextResponse.json(
+            { error: `Failed to delete project: ${error.message}` },
+            { status: 500 }
+        );
+    }
+
+    return NextResponse.json({ ok: true });
+}
+

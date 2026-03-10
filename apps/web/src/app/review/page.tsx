@@ -6,8 +6,12 @@ import { Player } from "@remotion/player";
 import { TEMPLATES, getTemplateById } from "@video-editor/shared";
 import type { TranscriptWord } from "@video-editor/shared";
 import { VideoComposition } from "@video-editor/video";
+import type { ProjectAssetInput } from "@video-editor/video";
 import { MOCK_TRANSCRIPT, MOCK_ZOOM_TIMESTAMPS } from "@/lib/mock-data";
 import { AssetBrowser } from "@/components/AssetBrowser";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const VideoComp = VideoComposition as any;
 
 const SAMPLE_VIDEO_URL =
     "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4";
@@ -19,6 +23,7 @@ interface ProjectData {
     id: string;
     title: string;
     video_url: string | null;
+    signed_video_url?: string | null;
     hook_text: string;
     cta_text: string;
     accent_color: string;
@@ -44,8 +49,10 @@ function ReviewContent() {
     const [transcriptWords, setTranscriptWords] = useState<TranscriptWord[]>(MOCK_TRANSCRIPT);
     const [loading, setLoading] = useState(!!projectId);
     const [hookText, setHookText] = useState("This will blow your mind 🤯");
+    const [ctaText, setCtaText] = useState("Follow for more");
     const [accentColor, setAccentColor] = useState("#6366F1");
     const [captionIntensity, setCaptionIntensity] = useState<"subtle" | "default" | "bold">("default");
+    const [compositionAssets, setCompositionAssets] = useState<ProjectAssetInput[]>([]);
     const [exporting, setExporting] = useState(false);
     const [renderProgress, setRenderProgress] = useState(0);
     const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
@@ -62,6 +69,7 @@ function ReviewContent() {
                 if (data.ok && data.project) {
                     setProject(data.project);
                     if (data.project.hook_text) setHookText(data.project.hook_text);
+                    if (data.project.cta_text) setCtaText(data.project.cta_text);
                     if (data.project.accent_color) setAccentColor(data.project.accent_color);
                 }
                 // Load transcript words if available
@@ -124,8 +132,8 @@ function ReviewContent() {
         };
     }, [templateConfig, accentColor, captionIntensity]);
 
-    // Use the project's actual video URL or fall back to sample
-    const videoUrl = project?.video_url || SAMPLE_VIDEO_URL;
+    // Use signed URL (for private bucket) or fall back to public URL or sample
+    const videoUrl = project?.signed_video_url || project?.video_url || SAMPLE_VIDEO_URL;
 
     async function handleSave() {
         if (!projectId) return;
@@ -136,6 +144,7 @@ function ReviewContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     hookText,
+                    ctaText,
                     accentColor,
                 }),
             });
@@ -222,16 +231,17 @@ function ReviewContent() {
                 <div className="relative mx-auto w-full max-w-[340px]">
                     <div className="overflow-hidden rounded-2xl border border-surface-border shadow-2xl shadow-accent/10">
                         <Player
-                            component={VideoComposition}
+                            component={VideoComp}
                             inputProps={{
                                 sourceVideoUrl: videoUrl,
                                 transcriptWords: transcriptWords,
                                 templateConfig: modifiedTemplate,
                                 hookText,
-                                ctaText: templateConfig.cta.buttonText ?? "Follow for more",
+                                ctaText,
                                 zoomTimestamps: MOCK_ZOOM_TIMESTAMPS,
                                 durationInFrames: DURATION_SECONDS * FPS,
                                 fps: FPS,
+                                projectAssets: compositionAssets,
                             }}
                             durationInFrames={DURATION_SECONDS * FPS}
                             compositionWidth={1080}
@@ -260,6 +270,19 @@ function ReviewContent() {
                             type="text"
                             value={hookText}
                             onChange={(e) => setHookText(e.target.value)}
+                            className="w-full rounded-lg border border-surface-border bg-surface px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/40"
+                        />
+                    </div>
+
+                    {/* CTA Text */}
+                    <div className="space-y-2">
+                        <label htmlFor="cta-text" className="text-sm font-medium text-slate-300">CTA Text</label>
+                        <input
+                            id="cta-text"
+                            type="text"
+                            value={ctaText}
+                            onChange={(e) => setCtaText(e.target.value)}
+                            placeholder="Follow for more"
                             className="w-full rounded-lg border border-surface-border bg-surface px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/40"
                         />
                     </div>

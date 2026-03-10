@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
+import { ProjectCard } from "@/components/ProjectCard";
 
 const statusBadge: Record<string, string> = {
     draft: "bg-surface-border/50 text-slate-400",
@@ -49,58 +50,9 @@ export default async function DashboardPage() {
 
             {/* Project Grid */}
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {projects.map((p) => {
-                    // Navigate to the correct next step depending on status
-                    const href = p.template_id
-                        ? `/review?project=${p.id}`
-                        : `/templates?project=${p.id}`;
-
-                    return (
-                        <Link
-                            key={p.id}
-                            href={href}
-                            className="glass-card glow-hover group flex flex-col gap-4 p-5 transition-all hover:bg-surface-hover/50"
-                        >
-                            {/* Thumbnail area */}
-                            <div className="relative flex h-40 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-surface-hover to-surface">
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 transition-transform group-hover:scale-110">
-                                    <svg
-                                        className="h-7 w-7 text-accent"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth={1.5}
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
-                                        />
-                                    </svg>
-                                </div>
-                                <span
-                                    className={`absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusBadge[p.status] ?? statusBadge.draft}`}
-                                >
-                                    {p.status}
-                                </span>
-                            </div>
-
-                            {/* Info */}
-                            <div>
-                                <h3 className="font-semibold text-white group-hover:text-accent transition-colors">
-                                    {p.title}
-                                </h3>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    {new Date(p.created_at).toLocaleDateString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                    })}
-                                </p>
-                            </div>
-                        </Link>
-                    );
-                })}
+                {projects.map((p) => (
+                    <ProjectCard key={p.id} project={p} />
+                ))}
 
                 {/* Empty state / create new card */}
                 <Link
