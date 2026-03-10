@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerClient();
 
+    // Get the authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data: project, error } = await supabase
         .from("projects")
         .insert({
@@ -76,6 +79,7 @@ export async function POST(request: NextRequest) {
             hook_text: body.hookText ?? "",
             cta_text: body.ctaText ?? "",
             accent_color: body.accentColor ?? "#6366F1",
+            user_id: user?.id ?? null,
         })
         .select()
         .single();

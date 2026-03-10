@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient, createAdminClient } from "@/lib/supabase";
 
 /**
  * GET /api/projects/[id]
@@ -123,7 +123,7 @@ export async function DELETE(
     _request: NextRequest,
     { params }: { params: { id: string } }
 ) {
-    const supabase = createServerClient();
+    const supabase = createAdminClient();
 
     // Delete related data first (cascade may handle some of these)
     await supabase.from("project_assets").delete().eq("project_id", params.id);

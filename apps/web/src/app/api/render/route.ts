@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
+import { createAdminClient } from "@/lib/supabase";
 import path from "path";
 import os from "os";
 import fs from "fs";
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const supabase = createServerClient();
+    const supabase = createAdminClient();
 
     // 1. Fetch the project + template + transcript
     const { data: project, error: fetchError } = await supabase
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const supabase = createServerClient();
+    const supabase = createAdminClient();
 
     const { data: job, error } = await supabase
         .from("render_jobs")
@@ -150,7 +150,7 @@ interface RenderParams {
 }
 
 async function renderInBackground(params: RenderParams) {
-    const supabase = createServerClient();
+    const supabase = createAdminClient();
 
     try {
         // Update status to rendering

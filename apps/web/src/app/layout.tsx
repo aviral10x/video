@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ToastProvider } from "@/components/Toast";
+import { AuthNav } from "@/components/AuthNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -49,6 +50,7 @@ export default function RootLayout({
                                 >
                                     + New
                                 </Link>
+                                <AuthNav />
                             </div>
                         </div>
                     </nav>
