@@ -4,8 +4,10 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Player } from "@remotion/player";
 import { TEMPLATES, getTemplateById } from "@video-editor/shared";
+import type { TranscriptWord } from "@video-editor/shared";
 import { VideoComposition } from "@video-editor/video";
 import { MOCK_TRANSCRIPT, MOCK_ZOOM_TIMESTAMPS } from "@/lib/mock-data";
+import { AssetBrowser } from "@/components/AssetBrowser";
 
 const SAMPLE_VIDEO_URL =
     "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4";
@@ -39,11 +41,15 @@ function ReviewContent() {
     const templateParam = searchParams.get("template");
 
     const [project, setProject] = useState<ProjectData | null>(null);
+    const [transcriptWords, setTranscriptWords] = useState<TranscriptWord[]>(MOCK_TRANSCRIPT);
     const [loading, setLoading] = useState(!!projectId);
     const [hookText, setHookText] = useState("This will blow your mind 🤯");
     const [accentColor, setAccentColor] = useState("#6366F1");
     const [captionIntensity, setCaptionIntensity] = useState<"subtle" | "default" | "bold">("default");
     const [exporting, setExporting] = useState(false);
+    const [renderProgress, setRenderProgress] = useState(0);
+    const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+    const [renderError, setRenderError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
     // Load project from DB
@@ -57,6 +63,17 @@ function ReviewContent() {
                     setProject(data.project);
                     if (data.project.hook_text) setHookText(data.project.hook_text);
                     if (data.project.accent_color) setAccentColor(data.project.accent_color);
+                }
+                // Load transcript words if available
+                if (data.transcript?.transcript_words?.length) {
+                    const words: TranscriptWord[] = data.transcript.transcript_words.map(
+                        (w: { word: string; start_sec: number; end_sec: number }) => ({
+                            word: w.word,
+                            start: w.start_sec,
+                            end: w.end_sec,
+                        })
+                    );
+                    setTranscriptWords(words);
                 }
             } catch {
             } finally {
@@ -128,10 +145,59 @@ function ReviewContent() {
     }
 
     async function handleExport() {
-        if (projectId) await handleSave();
+        if (!projectId) return;
+        await handleSave();
         setExporting(true);
-        // TODO: wire to real render pipeline
-        setTimeout(() => setExporting(false), 3000);
+        setRenderProgress(0);
+        setRenderError(null);
+        setDownloadUrl(null);
+
+        try {
+            // 1. Create render job
+            const res = await fetch("/api/render", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    projectId,
+                    templateId: project?.template_id ?? templateConfig.id,
+                }),
+            });
+            const data = await res.json();
+
+            if (!res.ok || !data.ok) {
+                throw new Error(data.error || "Failed to start render");
+            }
+
+            const jobId = data.job.id;
+
+            // 2. Poll for progress
+            const pollInterval = setInterval(async () => {
+                try {
+                    const pollRes = await fetch(`/api/render?jobId=${jobId}`);
+                    const pollData = await pollRes.json();
+
+                    if (pollData.ok && pollData.job) {
+                        setRenderProgress(pollData.job.progress);
+
+                        if (pollData.job.status === "done") {
+                            clearInterval(pollInterval);
+                            setExporting(false);
+                            setDownloadUrl(pollData.job.output_url);
+                        } else if (pollData.job.status === "failed") {
+                            clearInterval(pollInterval);
+                            setExporting(false);
+                            setRenderError(pollData.job.error_message || "Render failed");
+                        }
+                    }
+                } catch {
+                    // Polling failures are non-fatal
+                }
+            }, 2000);
+
+        } catch (err: any) {
+            setExporting(false);
+            setRenderError(err.message || "Something went wrong");
+        }
     }
 
     if (loading) {
@@ -159,7 +225,7 @@ function ReviewContent() {
                             component={VideoComposition}
                             inputProps={{
                                 sourceVideoUrl: videoUrl,
-                                transcriptWords: MOCK_TRANSCRIPT,
+                                transcriptWords: transcriptWords,
                                 templateConfig: modifiedTemplate,
                                 hookText,
                                 ctaText: templateConfig.cta.buttonText ?? "Follow for more",
@@ -238,34 +304,82 @@ function ReviewContent() {
                     </div>
                 </div>
 
+                {/* Asset Library */}
+                {projectId && (
+                    <AssetBrowser projectId={projectId} />
+                )}
+
                 {/* Buttons */}
-                <div className="flex gap-3">
-                    {projectId && (
+                <div className="space-y-3">
+                    <div className="flex gap-3">
+                        {projectId && (
+                            <button
+                                type="button"
+                                onClick={handleSave}
+                                disabled={saving || exporting}
+                                className="flex-1 rounded-lg border border-surface-border py-3.5 text-sm font-bold text-slate-300 transition-all hover:bg-surface-hover hover:text-white disabled:opacity-50"
+                            >
+                                {saving ? "Saving…" : "Save"}
+                            </button>
+                        )}
                         <button
                             type="button"
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="flex-1 rounded-lg border border-surface-border py-3.5 text-sm font-bold text-slate-300 transition-all hover:bg-surface-hover hover:text-white disabled:opacity-50"
+                            onClick={handleExport}
+                            disabled={exporting || !projectId}
+                            className="flex-1 rounded-lg bg-gradient-to-r from-accent to-accent-pink py-3.5 text-sm font-bold text-white shadow-lg shadow-accent/30 transition-all hover:shadow-accent/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:shadow-none"
                         >
-                            {saving ? "Saving…" : "Save"}
+                            {exporting ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    Rendering {renderProgress}%
+                                </span>
+                            ) : "Export MP4 ↓"}
                         </button>
+                    </div>
+
+                    {/* Render progress bar */}
+                    {exporting && (
+                        <div className="space-y-1.5">
+                            <div className="h-2 overflow-hidden rounded-full bg-surface">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-accent to-accent-pink transition-all duration-700"
+                                    style={{ width: `${renderProgress}%` }}
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500">
+                                {renderProgress < 30
+                                    ? "Bundling composition…"
+                                    : renderProgress < 90
+                                    ? "Rendering video…"
+                                    : "Uploading…"}
+                            </p>
+                        </div>
                     )}
-                    <button
-                        type="button"
-                        onClick={handleExport}
-                        disabled={exporting}
-                        className="flex-1 rounded-lg bg-gradient-to-r from-accent to-accent-pink py-3.5 text-sm font-bold text-white shadow-lg shadow-accent/30 transition-all hover:shadow-accent/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:shadow-none"
-                    >
-                        {exporting ? (
-                            <span className="flex items-center justify-center gap-2">
-                                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                                Exporting…
-                            </span>
-                        ) : "Export MP4 ↓"}
-                    </button>
+
+                    {/* Render error */}
+                    {renderError && (
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                            {renderError}
+                        </div>
+                    )}
+
+                    {/* Download link */}
+                    {downloadUrl && (
+                        <a
+                            href={downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 py-3.5 text-sm font-bold text-emerald-400 transition-all hover:bg-emerald-500/20"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            Download MP4
+                        </a>
+                    )}
                 </div>
             </div>
         </div>

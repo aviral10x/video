@@ -25,7 +25,26 @@ export async function GET(
         );
     }
 
-    return NextResponse.json({ ok: true, project });
+    // Fetch transcript with words if it exists
+    let transcript = null;
+    const { data: transcriptData } = await supabase
+        .from("transcripts")
+        .select("*, transcript_words(*)")
+        .eq("project_id", params.id)
+        .single();
+
+    if (transcriptData) {
+        // Sort words by sort_order
+        const words = (transcriptData.transcript_words ?? []).sort(
+            (a: any, b: any) => a.sort_order - b.sort_order
+        );
+        transcript = {
+            ...transcriptData,
+            transcript_words: words,
+        };
+    }
+
+    return NextResponse.json({ ok: true, project, transcript });
 }
 
 /**

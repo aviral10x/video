@@ -418,7 +418,15 @@ export interface Database {
                     source?: string;
                     created_at?: string;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: "transcripts_project_id_fkey";
+                        columns: ["project_id"];
+                        isOneToOne: true;
+                        referencedRelation: "projects";
+                        referencedColumns: ["id"];
+                    }
+                ];
                 Update: {
                     project_id?: string;
                     full_text?: string | null;
@@ -447,7 +455,15 @@ export interface Database {
                     is_highlight?: boolean;
                     sort_order?: number;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: "transcript_words_transcript_id_fkey";
+                        columns: ["transcript_id"];
+                        isOneToOne: false;
+                        referencedRelation: "transcripts";
+                        referencedColumns: ["id"];
+                    }
+                ];
                 Update: {
                     transcript_id?: string;
                     word?: string;

@@ -73,9 +73,27 @@ export default function NewProjectPage() {
                 throw new Error(projectData.error || "Failed to create project");
             }
 
+            setProgress(70);
+
+            // Step 3: Auto-transcribe the video
+            try {
+                const transcribeRes = await fetch("/api/transcribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ projectId: projectData.project.id }),
+                });
+                const transcribeData = await transcribeRes.json();
+                if (transcribeData.ok) {
+                    setProgress(90);
+                }
+            } catch {
+                // Transcription failure is non-blocking — user can still proceed
+                console.warn("Transcription failed, continuing without it");
+            }
+
             setProgress(100);
 
-            // Step 3: Navigate to template selection with the project ID
+            // Step 4: Navigate to template selection with the project ID
             router.push(`/templates?project=${projectData.project.id}`);
         } catch (err: any) {
             setError(err.message || "Something went wrong");
@@ -175,7 +193,7 @@ export default function NewProjectPage() {
                     <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-slate-400">
-                                {progress < 50 ? "Uploading video…" : progress < 90 ? "Creating project…" : "Almost done…"}
+                                {progress < 50 ? "Uploading video…" : progress < 70 ? "Creating project…" : progress < 90 ? "Transcribing audio…" : "Almost done…"}
                             </span>
                             <span className="font-medium text-accent">{progress}%</span>
                         </div>
