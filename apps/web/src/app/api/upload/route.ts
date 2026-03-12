@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
+import { createAdminClient } from "@/lib/supabase";
 
 /**
  * POST /api/upload
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    const supabase = createServerClient();
+    const supabase = createAdminClient();
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
