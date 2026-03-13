@@ -12,6 +12,8 @@
         "typescript": "^5.7.0"
     },
     "dependencies": {
-        "@video-editor/timeline-schema": "*"
+        "@pixi/react": "^8.0.5",
+        "@video-editor/timeline-schema": "*",
+        "pixi.js": "^8.17.0"
     }
 }

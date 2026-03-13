@@ -1,10 +1,15 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useEditorStore } from '@video-editor/editor-core';
 import { Timeline } from '@/components/editor/Timeline';
+import { PreviewWrapper } from '@/components/editor/PreviewWrapper';
+import { Play, Pause } from 'lucide-react';
+
 export default function EditorPage() {
-  const { setProject, project } = useEditorStore();
+  const { setProject, project, isPlaying, setIsPlaying, setPlayhead, playheadMs } = useEditorStore();
+  const lastTimeRef = useRef<number>(0);
+  const frameRef = useRef<number>(0);
 
   useEffect(() => {
     // Inject mock project data on mount for testing MVP
@@ -54,6 +59,42 @@ export default function EditorPage() {
        });
     }
   }, [project, setProject]);
+
+  // Playback Loop
+  useEffect(() => {
+    if (!isPlaying) {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+      return;
+    }
+
+    const loop = (time: number) => {
+      if (lastTimeRef.current !== 0) {
+        const delta = time - lastTimeRef.current;
+        setPlayhead(useEditorStore.getState().playheadMs + delta);
+      }
+      lastTimeRef.current = time;
+      frameRef.current = requestAnimationFrame(loop);
+    };
+
+    lastTimeRef.current = performance.now();
+    frameRef.current = requestAnimationFrame(loop);
+
+    return () => cancelAnimationFrame(frameRef.current);
+  }, [isPlaying, setPlayhead]);
+
+  const togglePlay = () => {
+     lastTimeRef.current = 0;
+     setIsPlaying(!isPlaying);
+  };
+
+  const formatTime = (ms: number) => {
+     const totalSeconds = Math.floor(ms / 1000);
+     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+     const s = (totalSeconds % 60).toString().padStart(2, '0');
+     const msFormatted = Math.floor((ms % 1000) / 10).toString().padStart(2, '0');
+     return `${m}:${s}:${msFormatted}`;
+  };
+
   return (
     <div className="flex h-screen w-full flex-col bg-stone-950 text-slate-200">
       {/* Top Navbar */}
@@ -95,18 +136,18 @@ export default function EditorPage() {
         {/* Center Canvas Area */}
         <main className="flex flex-1 flex-col items-center justify-center bg-black/40 p-8 relative">
           {/* Canvas Wrapper */}
-          <div className="relative aspect-video w-full max-w-4xl rounded-lg bg-stone-900 shadow-2xl overflow-hidden ring-1 ring-stone-800/50">
-             <div className="absolute inset-0 flex items-center justify-center">
-                 <p className="text-sm text-stone-500">Preview Renderer (PixiJS)</p>
-             </div>
+          <div className="relative aspect-video w-full max-w-4xl rounded-lg shadow-2xl overflow-hidden ring-1 ring-stone-800/50 flex items-center justify-center bg-black">
+             <PreviewWrapper />
           </div>
           
           {/* Playback Controls */}
           <div className="absolute bottom-4 flex items-center gap-4 rounded-full border border-stone-800 bg-stone-900/80 px-4 py-2 backdrop-blur-md">
-             <button className="text-stone-300 hover:text-white">◁</button>
-             <button className="text-stone-300 hover:text-white">▷</button>
+             <button className="text-stone-300 hover:text-white transition-colors" onClick={() => setPlayhead(0)}>◁</button>
+             <button className="text-stone-300 hover:text-white transition-colors" onClick={togglePlay}>
+                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+             </button>
              <div className="w-px h-4 bg-stone-700" />
-             <span className="text-xs font-mono text-stone-400">00:00:00</span>
+             <span className="text-xs font-mono text-stone-400 w-16 text-center">{formatTime(playheadMs)}</span>
           </div>
         </main>
 

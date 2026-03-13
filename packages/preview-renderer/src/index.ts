@@ -1,2 +1,1 @@
-// Preview Renderer Entry
-export {};
+export { PreviewRenderer } from './PreviewRenderer';
