@@ -218,10 +218,10 @@ function ReviewContent() {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in" style={{ animationDelay: '0ms' }}>
             <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
             {/* Left — Remotion Player */}
-            <div className="space-y-4">
+            <div className="space-y-4 animate-in" style={{ animationDelay: '100ms' }}>
                 <h1 className="text-3xl font-extrabold tracking-tight text-white">
                     Review &amp; Export
                 </h1>
@@ -264,7 +264,7 @@ function ReviewContent() {
             </div>
 
             {/* Right — Controls */}
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in" style={{ animationDelay: '200ms' }}>
                 <div className="glass-card space-y-6 p-6">
                     <h2 className="text-lg font-bold text-white">Customise</h2>
 
@@ -276,7 +276,7 @@ function ReviewContent() {
                             type="text"
                             value={hookText}
                             onChange={(e) => setHookText(e.target.value)}
-                            className="w-full rounded-lg border border-surface-border bg-surface px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/40"
+                            className="w-full rounded-lg border border-surface-border bg-surface px-4 py-3 text-sm text-white placeholder-slate-500 shadow-sm outline-none transition-all focus:border-accent focus:ring-1 focus:ring-accent"
                         />
                     </div>
 
@@ -289,7 +289,7 @@ function ReviewContent() {
                             value={ctaText}
                             onChange={(e) => setCtaText(e.target.value)}
                             placeholder="Follow for more"
-                            className="w-full rounded-lg border border-surface-border bg-surface px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/40"
+                            className="w-full rounded-lg border border-surface-border bg-surface px-4 py-3 text-sm text-white placeholder-slate-500 shadow-sm outline-none transition-all focus:border-accent focus:ring-1 focus:ring-accent"
                         />
                     </div>
 
@@ -355,7 +355,7 @@ function ReviewContent() {
                             type="button"
                             onClick={handleExport}
                             disabled={exporting || !projectId}
-                            className="flex-1 rounded-lg bg-gradient-to-r from-accent to-accent-pink py-3.5 text-sm font-bold text-white shadow-lg shadow-accent/30 transition-all hover:shadow-accent/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:shadow-none"
+                            className="glow-hover flex-1 rounded-lg bg-gradient-to-r from-accent to-accent-pink py-3.5 text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:shadow-none"
                         >
                             {exporting ? (
                                 <span className="flex items-center justify-center gap-2">
@@ -414,7 +414,7 @@ function ReviewContent() {
         </div>
 
         {/* Bottom - Timeline */}
-        <div className="w-full">
+        <div className="w-full animate-in" style={{ animationDelay: '300ms' }}>
             <VideoTimeline
                 playerRef={playerRef}
                 transcriptWords={transcriptWords}

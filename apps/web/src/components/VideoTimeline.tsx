@@ -133,7 +133,7 @@ export function VideoTimeline({
                     {/* Tracks Wrapper */}
                     <div className="pointer-events-none mt-8 flex flex-col gap-2">
                         {/* Track 1: Video */}
-                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner">
+                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner transition-all hover:brightness-110">
                             <div className="absolute -left-20 flex w-16 items-center gap-2 pr-2 text-xs font-semibold text-slate-400 opacity-60 transition-opacity group-hover:opacity-100">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -149,7 +149,7 @@ export function VideoTimeline({
                         </div>
 
                         {/* Track 2: Hook */}
-                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner">
+                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner transition-all hover:brightness-110">
                             <div className="absolute -left-20 flex w-16 items-center gap-2 text-xs font-semibold text-slate-400 opacity-60 transition-opacity group-hover:opacity-100">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -171,7 +171,7 @@ export function VideoTimeline({
                         </div>
 
                         {/* Track 3: Captions */}
-                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner">
+                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner transition-all hover:brightness-110">
                             <div className="absolute -left-20 flex w-16 items-center gap-2 text-xs font-semibold text-slate-400 opacity-60 transition-opacity group-hover:opacity-100">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
@@ -193,7 +193,7 @@ export function VideoTimeline({
                         </div>
 
                         {/* Track 4: Zoom FX */}
-                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner">
+                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner transition-all hover:brightness-110">
                             <div className="absolute -left-20 flex w-16 items-center gap-2 text-xs font-semibold text-slate-400 opacity-60 transition-opacity group-hover:opacity-100">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
@@ -215,7 +215,7 @@ export function VideoTimeline({
                         </div>
 
                         {/* Track 5: CTA */}
-                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner">
+                        <div className="group relative flex h-10 w-full items-center rounded-md bg-stone-800/50 shadow-inner transition-all hover:brightness-110">
                             <div className="absolute -left-20 flex w-16 items-center gap-2 text-xs font-semibold text-slate-400 opacity-60 transition-opacity group-hover:opacity-100">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
@@ -244,10 +244,11 @@ export function VideoTimeline({
                         style={{ 
                             left: `${playheadPositionX}px`, 
                             height: "100%", 
-                            transform: "translateX(-50%)" 
+                            transform: "translateX(-50%)",
+                            willChange: "transform, left"
                         }}
                     >
-                        <div className="border-t-[8px] border-x-[6px] border-x-transparent border-t-pink-500 absolute -top-1" />
+                        <div className="border-t-[8px] border-x-[6px] border-x-transparent border-t-pink-500 absolute -top-1 transition-all" />
                         <div className="h-full w-0.5 bg-pink-500/80 shadow-[0_0_8px_rgba(236,72,153,0.8)]" />
                     </div>
                 </div>
