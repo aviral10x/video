@@ -39,9 +39,9 @@ const TimelineClip = ({ trackId, clip }: { trackId: string, clip: Clip }) => {
          const deltaMs = (info.offset.x / PIXELS_PER_SECOND) * 1000;
          moveClipTime(trackId, clip.id, clip.startAtMs + deltaMs);
       }}
+      onClick={(e) => { e.stopPropagation(); selectClip(clip.id); }}
       className={`absolute h-8 rounded border flex items-center px-2 cursor-grab active:cursor-grabbing transition-colors ${colorClass} ${isSelected ? 'ring-2 ring-white z-10' : 'hover:brightness-110 z-0'}`}
       style={{ width: widthStr, left: leftStr }}
-      onClick={(e) => { e.stopPropagation(); selectClip(clip.id); }}
     >
         <span className="text-[10px] truncate max-w-full font-medium select-none pointer-events-none">
             {clip.type === 'text' ? (clip as any).content : 'Media Clip'}
