@@ -7,11 +7,16 @@ interface EditorState {
   isPlaying: boolean;
   selectedClipId: string | null;
   
+  activeTool: 'select' | 'blade';
+  snappingEnabled: boolean;
+  
   // Actions
   setProject: (project: Project) => void;
   setPlayhead: (ms: number) => void;
   setIsPlaying: (playing: boolean) => void;
   selectClip: (id: string | null) => void;
+  setActiveTool: (tool: 'select' | 'blade') => void;
+  setSnappingEnabled: (enabled: boolean) => void;
   
   // Mutations
   addTrack: (track: Track) => void;
@@ -27,11 +32,15 @@ export const useEditorStore = create<EditorState>((set) => ({
   playheadMs: 0,
   isPlaying: false,
   selectedClipId: null,
+  activeTool: 'select',
+  snappingEnabled: true,
 
   setProject: (project) => set({ project }),
   setPlayhead: (ms) => set({ playheadMs: ms }),
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   selectClip: (id) => set({ selectedClipId: id }),
+  setActiveTool: (tool) => set({ activeTool: tool }),
+  setSnappingEnabled: (enabled) => set({ snappingEnabled: enabled }),
 
   addTrack: (track) => set((state) => {
     if (!state.project) return state;

@@ -1,99 +1,62 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase';
+import { ProjectSchema } from '@video-editor/timeline-schema';
 
 /**
  * GET /api/project-assets?projectId=xxx
- *
- * List all assets attached to a project.
+ * Returns the saved timeline JSON for a project.
  */
 export async function GET(request: NextRequest) {
-    const projectId = request.nextUrl.searchParams.get("projectId");
+    const projectId = request.nextUrl.searchParams.get('projectId');
     if (!projectId) {
-        return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
+        return NextResponse.json({ error: 'Missing projectId' }, { status: 400 });
     }
 
-    const supabase = createServerClient();
-
+    const supabase = createAdminClient();
     const { data, error } = await supabase
-        .from("project_assets")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("sort_order");
+        .from('project_timeline' as any)
+        .select('timeline_json')
+        .eq('project_id', projectId)
+        .single();
 
-    if (error) {
-        return NextResponse.json(
-            { error: `Failed to fetch project assets: ${error.message}` },
-            { status: 500 }
-        );
+    if (error || !data) {
+        return NextResponse.json({ ok: false, error: 'Timeline not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ ok: true, projectAssets: data ?? [] });
+    return NextResponse.json({ ok: true, timeline: (data as any).timeline_json });
 }
 
 /**
  * POST /api/project-assets
- *
- * Body: { projectId, assetType, assetId, startSec?, endSec?, config? }
+ * Body: { projectId: string, timeline: Project }
+ * Upserts the timeline JSON to the DB.
  */
 export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null);
+    if (!body?.projectId || !body?.timeline) {
+        return NextResponse.json({ error: 'Missing projectId or timeline' }, { status: 400 });
+    }
 
-    if (!body?.projectId || !body?.assetType || !body?.assetId) {
+    // Validate against the universal schema before saving
+    const parsed = ProjectSchema.safeParse(body.timeline);
+    if (!parsed.success) {
         return NextResponse.json(
-            { error: "Missing projectId, assetType, or assetId" },
+            { error: 'Invalid timeline schema', details: parsed.error.flatten() },
             { status: 400 }
         );
     }
 
-    const supabase = createServerClient();
-
-    const { data, error } = await supabase
-        .from("project_assets")
-        .insert({
-            project_id: body.projectId,
-            asset_type: body.assetType,
-            asset_id: body.assetId,
-            start_sec: body.startSec ?? null,
-            end_sec: body.endSec ?? null,
-            config: body.config ?? {},
-        })
-        .select()
-        .single();
-
-    if (error) {
-        return NextResponse.json(
-            { error: `Failed to add asset: ${error.message}` },
-            { status: 500 }
-        );
-    }
-
-    return NextResponse.json({ ok: true, projectAsset: data });
-}
-
-/**
- * DELETE /api/project-assets?id=xxx
- *
- * Remove an asset from a project.
- */
-export async function DELETE(request: NextRequest) {
-    const id = request.nextUrl.searchParams.get("id");
-    if (!id) {
-        return NextResponse.json({ error: "Missing id" }, { status: 400 });
-    }
-
-    const supabase = createServerClient();
-
+    const supabase = createAdminClient();
     const { error } = await supabase
-        .from("project_assets")
-        .delete()
-        .eq("id", id);
+        .from('project_timeline' as any)
+        .upsert(
+            { project_id: body.projectId, timeline_json: parsed.data, updated_at: new Date().toISOString() },
+            { onConflict: 'project_id' }
+        );
 
     if (error) {
-        return NextResponse.json(
-            { error: `Failed to remove asset: ${error.message}` },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: `Save failed: ${error.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, savedAt: new Date().toISOString() });
 }

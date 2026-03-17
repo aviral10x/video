@@ -1,70 +1,65 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase";
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase';
 
 /**
  * POST /api/upload
  *
- * Accepts a multipart/form-data payload with a video file.
- * Uploads to Supabase Storage `videos` bucket.
- * Returns the public URL.
+ * Accepts multipart/form-data with a 'file' field (video, audio, or image).
+ * Uploads to Supabase Storage `assets` bucket.
+ * Returns { url, path, mimeType, size }.
  */
 export async function POST(request: NextRequest) {
-    const contentType = request.headers.get("content-type") ?? "";
-
-    if (!contentType.includes("multipart/form-data")) {
-        return NextResponse.json(
-            { error: "Expected multipart/form-data" },
-            { status: 400 }
-        );
+    const formData = await request.formData().catch(() => null);
+    if (!formData) {
+        return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get("video");
-
-    if (!file || !(file instanceof Blob)) {
-        return NextResponse.json(
-            { error: "Missing 'video' field in form data" },
-            { status: 400 }
-        );
+    // Accept 'file' field (generic) or legacy 'video' field
+    const file = (formData.get('file') ?? formData.get('video')) as Blob | null;
+    if (!file) {
+        return NextResponse.json({ error: "Missing 'file' field in form data" }, { status: 400 });
     }
 
-    // Check env vars — if Supabase is not configured, return a stub
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        const fakeUrl = `/uploads/${Date.now()}.mp4`;
-        return NextResponse.json({
-            ok: true,
-            url: fakeUrl,
-            size: file.size,
-            message: "Upload stub — Supabase not configured, file not persisted.",
-        });
-    }
+    const mimeType = file.type || 'application/octet-stream';
+    const ext = mimeTypeToExt(mimeType);
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
 
     const supabase = createAdminClient();
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const { data, error } = await supabase.storage
-        .from("videos")
-        .upload(fileName, buffer, {
-            contentType: "video/mp4",
-            upsert: false,
-        });
+        .from('assets')
+        .upload(fileName, buffer, { contentType: mimeType, upsert: false });
 
     if (error) {
-        return NextResponse.json(
-            { error: `Upload failed: ${error.message}` },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 });
     }
 
-    const { data: urlData } = supabase.storage
-        .from("videos")
-        .getPublicUrl(data.path);
+    const { data: urlData } = supabase.storage.from('assets').getPublicUrl(data.path);
 
     return NextResponse.json({
         ok: true,
         url: urlData.publicUrl,
         path: data.path,
+        mimeType,
         size: file.size,
     });
+}
+
+function mimeTypeToExt(mime: string): string {
+    const map: Record<string, string> = {
+        'video/mp4': '.mp4',
+        'video/webm': '.webm',
+        'video/quicktime': '.mov',
+        'audio/mpeg': '.mp3',
+        'audio/mp3': '.mp3',
+        'audio/wav': '.wav',
+        'audio/ogg': '.ogg',
+        'audio/aac': '.aac',
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+    };
+    return map[mime] ?? '';
 }
